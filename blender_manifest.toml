@@ -1,0 +1,18 @@
+schema_version = "1.0.0"
+
+id = "bullet_time"
+version = "1.0.0"
+name = "Bullet Time"
+tagline = "Easily and proceduraly generate renders of a subject from different angles"
+maintainer = "James Rono"
+
+type = "add-on"
+
+tags = ["Render"]
+
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
