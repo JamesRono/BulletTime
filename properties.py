@@ -2,6 +2,11 @@
 
 import bpy
 
+PRESETS = {
+    "DRAFT": {"resolution_x": 640, "resolution_y": 360, "samples": 32},
+    "MEDIUM": {"resolution_x": 1280, "resolution_y": 720, "samples": 128},
+    "HIGH": {"resolution_x": 1920, "resolution_y": 1080, "samples": 512},
+}
 
 def subject_poll(self, obj):
     """Limit the subject picker to renderable geometry types."""
@@ -42,8 +47,8 @@ class BULLETTIME_PG_props(bpy.types.PropertyGroup):
         description="Distance from subject to place cameras",
     )
 
-    density: bpy.props.IntProperty(
-        name="Density",
+    count: bpy.props.IntProperty(
+        name="Count",
         default=8,
         min=1,
         max=100,
@@ -55,6 +60,7 @@ class BULLETTIME_PG_props(bpy.types.PropertyGroup):
         items=[
             ("ARC", "Arc", "Cameras along a partial arc"),
             ("SPHERE", "Sphere", "Cameras distributed over a sphere"),
+            ("CIRCLE", "Circle", "Cameras along a full circle"),
         ],
         default="ARC",
         description="Distribution shape for camera positions",
@@ -87,27 +93,6 @@ class BULLETTIME_PG_props(bpy.types.PropertyGroup):
         description="Elevation angle of the camera path",
     )
 
-    front_axis: bpy.props.EnumProperty(
-        name="Front Axis",
-        items=[
-            ("X", "X", "Positive X is forward"),
-            ("-X", "-X", "Negative X is forward"),
-            ("Y", "Y", "Positive Y is forward"),
-            ("-Y", "-Y", "Negative Y is forward"),
-        ],
-        default="Y",
-        description="Which axis defines the subject's forward direction",
-    )
-
-    front_offset: bpy.props.FloatProperty(
-        name="Rotation Offset",
-        default=0.0,
-        min=-360.0,
-        max=360.0,
-        subtype="ANGLE",
-        description="Additional rotation offset for front direction",
-    )
-
     quality_preset: bpy.props.EnumProperty(
         name="Quality",
         items=[
@@ -124,27 +109,6 @@ class BULLETTIME_PG_props(bpy.types.PropertyGroup):
         default="//renders/",
         subtype="DIR_PATH",
         description="Directory where rendered images are saved",
-    )
-
-    last_generated_count: bpy.props.IntProperty(
-        name="Generated Points",
-        default=0,
-        min=0,
-        description="Number of camera points generated in the last run",
-    )
-
-    last_valid_count: bpy.props.IntProperty(
-        name="Valid Points",
-        default=0,
-        min=0,
-        description="Number of camera points rendered in the last run",
-    )
-
-    last_pruned_count: bpy.props.IntProperty(
-        name="Pruned Points",
-        default=0,
-        min=0,
-        description="Number of camera points removed by pruning in the last run",
     )
 
 

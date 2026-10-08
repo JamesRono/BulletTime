@@ -22,7 +22,6 @@ def clear_preview_empties():
 
     return removed
 
-
 def _get_or_create_preview_collection(context):
     """Return the collection used to hold preview empties."""
     collection = bpy.data.collections.get(PREVIEW_COLLECTION)

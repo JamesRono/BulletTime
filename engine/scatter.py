@@ -1,4 +1,4 @@
-"""Scatter step — generate candidate camera points without visibility checks."""
+"""Scatter step — generate candidate camera points"""
 
 from .geometry import generate_arc_points, generate_sphere_points
 

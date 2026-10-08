@@ -1,5 +1,3 @@
-"""Bullet Time — procedural multi-angle rendering for Blender."""
-
 import bpy
 
 from . import properties

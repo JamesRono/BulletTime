@@ -31,19 +31,18 @@ class BULLETTIME_PT_main_panel(bpy.types.Panel):
         box.label(text="Camera Path", icon="CURVE_PATH")
         box.prop(props, "path_shape")
         box.prop(props, "radius")
-        box.prop(props, "density")
+        box.prop(props, "count")
 
         if props.path_shape == "ARC":
             box.prop(props, "arc_start_angle")
             box.prop(props, "arc_end_angle")
             box.prop(props, "elevation")
 
-        layout.separator()
+        elif props.path_shape == "CIRCLE":
+            self.arc_start_angle = 0.0
+            self.arc_end_angle = 360.0
+            box.prop(props, "elevation")
 
-        box = layout.box()
-        box.label(text="Subject Facing", icon="ORIENTATION_GIMBAL")
-        box.prop(props, "front_axis")
-        box.prop(props, "front_offset")
 
         layout.separator()
 
@@ -52,18 +51,10 @@ class BULLETTIME_PT_main_panel(bpy.types.Panel):
         box.prop(props, "quality_preset")
         box.prop(props, "output_dir")
 
-        if props.last_generated_count > 0:
-            layout.separator()
-            box = layout.box()
-            box.label(text="Last Run", icon="INFO")
-            col = box.column(align=True)
-            col.label(text=f"Generated: {props.last_generated_count}")
-            col.label(text=f"Rendered: {props.last_valid_count}")
-
         layout.separator()
 
         box = layout.box()
-        box.label(text="Debug", icon="EMPTY_AXIS")
+        box.label(text="Preview", icon="GHOST_DISABLED")
         row = box.row(align=True)
         row.operator("bullettime.preview_points", text="Preview Camera Points", icon="EMPTY_ARROWS")
         row.operator("bullettime.clear_preview_points", text="", icon="TRASH")
@@ -71,7 +62,7 @@ class BULLETTIME_PT_main_panel(bpy.types.Panel):
         layout.separator()
 
         col = layout.column(align=True)
-        col.scale_y = 1.5
+        col.scale_y = 3
         col.operator("bullettime.camera_render", text="Render", icon="RENDER_STILL")
 
 
