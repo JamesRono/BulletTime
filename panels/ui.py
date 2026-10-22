@@ -1,5 +1,6 @@
 import bpy
 
+
 class BULLETTIME_PT_main_panel(bpy.types.Panel):
     """Main UI panel"""
 

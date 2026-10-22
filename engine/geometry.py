@@ -3,7 +3,7 @@
 import math
 from dataclasses import dataclass
 
-from mathutils import Matrix, Vector
+from mathutils import Vector
 
 
 @dataclass
@@ -15,6 +15,13 @@ class CameraPoint:
     azimuth: float
     elevation: float
 
+@dataclass
+class ArcConfig:
+    radius: float
+    start_angle: float
+    end_angle: float
+    elevation: float
+    count: int
 
 _AXIS_MAP = {
     "X": Vector((1.0, 0.0, 0.0)),
@@ -24,40 +31,39 @@ _AXIS_MAP = {
 }
 
 
-def _get_evaluated_object(obj, context):
+def _get_evaluated_object(subject, context):
     """Return the subject with modifiers and transforms applied."""
     if context is None:
-        return obj
+        return subject
     depsgraph = context.evaluated_depsgraph_get()
-    return obj.evaluated_get(depsgraph)
+    return subject.evaluated_get(depsgraph)
 
 
-def get_subject_center(obj, context=None):
+def get_subject_center(subject, context=None):
     """World-space center of the subject bounding box."""
-    eval_obj = _get_evaluated_object(obj, context)
+    eval_obj = _get_evaluated_object(subject, context)
     local_center = sum((Vector(corner) for corner in eval_obj.bound_box), Vector()) / 8
     return eval_obj.matrix_world @ local_center
 
 
-def _get_frame_vectors(obj, front_axis, front_offset_rad, context=None):
-    """Build front, right, and up vectors for azimuth/elevation placement."""
-    eval_obj = _get_evaluated_object(obj, context)
-    local_front = _AXIS_MAP[front_axis]
-    world_front = (eval_obj.matrix_world.to_3x3() @ local_front).normalized()
-    up = (eval_obj.matrix_world.to_3x3() @ Vector((0.0, 0.0, 1.0))).normalized()
+def _get_frame_vectors(subject, context=None):
+    """Extract forward, right, and up vectors directly from the subject's world rotation."""
+    eval_obj = _get_evaluated_object(subject, context)
+    matrix = eval_obj.matrix_world.to_3x3()
 
-    rot = Matrix.Rotation(front_offset_rad, 4, up)
-    front = (rot @ world_front).normalized()
+    # Assuming Blender's standard local axes (adjust if your models face a different axis):
+    # - Local Y (or -Y) as forward, X as right, Z as up
+    right = matrix @ Vector((1.0, 0.0, 0.0))
+    front = matrix @ Vector((0.0, 1.0, 0.0))  # Or (0.0, -1.0, 0.0) depending on your asset setup
+    up = matrix @ Vector((0.0, 0.0, 1.0))
 
-    front_h = front - up * front.dot(up)
-    if front_h.length < 1e-6:
-        fallback = Vector((1.0, 0.0, 0.0))
-        if abs(up.dot(fallback)) > 0.99:
-            fallback = Vector((0.0, 1.0, 0.0))
-        front_h = fallback - up * fallback.dot(up)
-    front_h.normalize()
+    # If you want a strictly horizontal forward vector (ignoring pitch/tilt):
+    front_h = Vector((front.x, front.y, 0.0))
+    if front_h.length > 0.001:
+        front_h.normalize()
+    else:
+        front_h = Vector((0.0, 1.0, 0.0))
 
-    right = up.cross(front_h).normalized()
     return front_h, right, up
 
 
@@ -90,41 +96,37 @@ def _angles_from_location(location, center, front_h, right, up):
     elevation_rad = math.asin(max(-1.0, min(1.0, offset.dot(up))))
     return math.degrees(azimuth_rad), math.degrees(elevation_rad)
 
-
-def generate_arc_points(obj, props, context=None):
-    """Place cameras evenly along an arc at a fixed elevation."""
-    center = get_subject_center(obj, context)
-    front_h, right, up = _get_frame_vectors(
-        obj, props.front_axis, props.front_offset, context
-    )
-
-    start = props.arc_start_angle
-    end = props.arc_end_angle
-    elevation_rad = props.elevation
-    count = props.density
-
-    if count == 1:
-        azimuths = [(start + end) / 2]
+def generate_arc_points(center, config: ArcConfig, front, right, up):
+    """Place points evenly along an arc using the ArcConfig dataclass."""
+    if config.count == 1:
+        azimuths = [(config.start_angle + config.end_angle) / 2]
     else:
-        step = (end - start) / (count - 1)
-        azimuths = [start + step * i for i in range(count)]
+        span = config.end_angle - config.start_angle
+
+        if math.isclose(span, 360.0, abs_tol=1e-5): # Check if this is a full circle
+            # Divide by 'count' so it wraps cleanly without duplicating the start and end points ie 0/360
+            step = span / config.count
+            azimuths = [config.start_angle + step * i for i in range(config.count)]
+        else:
+            # For an open arc, divide by 'count - 1' to keep both endpoints
+            step = span / (config.count - 1)
+            azimuths = [config.start_angle + step * i for i in range(config.count)]
 
     return [
         _point_from_angles(
-            center, props.radius, front_h, right, up, azimuth, elevation_rad
+            center, config.radius, front, right, up, azimuth, config.elevation
         )
         for azimuth in azimuths
     ]
 
 
-def generate_sphere_points(obj, props, context=None):
+def generate_sphere_points(subject, props, context=None):
     """Distribute cameras evenly over a sphere using a Fibonacci lattice."""
-    center = get_subject_center(obj, context)
-    front_h, right, up = _get_frame_vectors(
-        obj, props.front_axis, props.front_offset, context
-    )
+    center = get_subject_center(subject, context)
+    front_h, right, up = _get_frame_vectors(subject, context)
 
-    count = props.density
+
+    count = props.count
     golden_ratio = (1.0 + math.sqrt(5.0)) / 2.0
     points = []
 
@@ -152,3 +154,31 @@ def generate_sphere_points(obj, props, context=None):
         points.append(CameraPoint(location, direction, azimuth, elevation))
 
     return points
+
+def scatter_camera_points(context, subject, props):
+    """Generate all candidate camera points from the current path settings."""
+    center = get_subject_center(subject, context)
+
+    # Pass props.front_offset (or props.front_offset_rad) back into the vector getter
+    front_h, right, up = _get_frame_vectors(subject, context)
+
+    if props.path_shape == "SPHERE":
+        return generate_sphere_points(subject, props, context)
+
+    if props.path_shape == "CIRCLE":
+        start_angle = 0.0
+        end_angle = 360.0  # Use 360.0 if your engine uses degrees instead of radians
+    else:
+        start_angle = props.arc_start_angle
+        end_angle = props.arc_end_angle
+
+    #Bundle the properties into your pure dataclass once. This helps keep bpy out of the engine
+    config = ArcConfig(
+        radius=props.radius,
+        start_angle=start_angle,
+        end_angle=end_angle,
+        elevation=props.elevation,
+        count=props.count,
+    )
+
+    return generate_arc_points(center, config, front_h, right, up)

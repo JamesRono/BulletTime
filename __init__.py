@@ -1,8 +1,6 @@
-import bpy
-
 from . import properties
-from .panels import ui
 from .operators import camera_render, preview_points
+from .panels import ui
 
 
 def register():

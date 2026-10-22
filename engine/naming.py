@@ -13,8 +13,8 @@ def sanitize_name(name):
 def make_filename(subject_name, azimuth, elevation, extension="png"):
     """Build a filename from subject-relative azimuth and elevation."""
     name = sanitize_name(subject_name)
-    az = int(round(azimuth)) % 360
-    el = int(round(elevation))
+    az = round(azimuth) % 360
+    el = round(elevation)
     sign = "+" if el >= 0 else "-"
     return f"{name}_az{az:03d}_el{sign}{abs(el):03d}.{extension}"
 

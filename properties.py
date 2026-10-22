@@ -114,9 +114,9 @@ class BULLETTIME_PG_props(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(BULLETTIME_PG_props)
-    bpy.types.Scene.bullet_time_props = bpy.props.PointerProperty(type=BULLETTIME_PG_props)
+    bpy.types.Scene.bullet_time_props = bpy.props.PointerProperty(type=BULLETTIME_PG_props)  # type: ignore
 
 
 def unregister():
-    del bpy.types.Scene.bullet_time_props
+    del bpy.types.Scene.bullet_time_props  # type: ignore
     bpy.utils.unregister_class(BULLETTIME_PG_props)
